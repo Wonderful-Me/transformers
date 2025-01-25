@@ -20,6 +20,7 @@
 """PyTorch Qwen2-VL model."""
 
 import math
+import time
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
@@ -1597,7 +1598,11 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
         >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
         "The image shows a street scene with a red stop sign in the foreground. In the background, there is a large red gate with Chinese characters ..."
         ```"""
-
+        
+        torch.cuda.synchronize()
+        st = time.time()    
+        print(f"start_time: {st}")
+        
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -1606,6 +1611,10 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
 
         if inputs_embeds is None:
             inputs_embeds = self.model.embed_tokens(input_ids)
+            torch.cuda.synchronize()
+            tt = time.time()    
+            print(f"text_embed_time: {tt - st}")
+            
             if pixel_values is not None:
                 pixel_values = pixel_values.type(self.visual.get_dtype())
                 image_embeds = self.visual(pixel_values, grid_thw=image_grid_thw)
@@ -1623,7 +1632,10 @@ class Qwen2VLForConditionalGeneration(Qwen2VLPreTrainedModel, GenerationMixin):
                 )
                 image_embeds = image_embeds.to(inputs_embeds.device, inputs_embeds.dtype)
                 inputs_embeds = inputs_embeds.masked_scatter(image_mask, image_embeds)
-
+                torch.cuda.synchronize()
+                it = time.time()    
+                print(f"image_embed_time: {it - tt}")
+                
             if pixel_values_videos is not None:
                 pixel_values_videos = pixel_values_videos.type(self.visual.get_dtype())
                 video_embeds = self.visual(pixel_values_videos, grid_thw=video_grid_thw)

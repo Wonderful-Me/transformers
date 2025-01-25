@@ -15,6 +15,7 @@
 """PyTorch Llava-Onevision model."""
 
 import math
+import time
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
@@ -668,6 +669,11 @@ class LlavaOnevisionForConditionalGeneration(LlavaOnevisionPreTrainedModel, Gene
         >>> processor.batch_decode(output, skip_special_tokens=True)[0]
         "user\n\nWhat is shown in this image?\nassistant\ncat"
         ```"""
+
+        torch.cuda.synchronize()
+        st = time.time()    
+        print(f"start_time: {st}")
+        
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -696,7 +702,11 @@ class LlavaOnevisionForConditionalGeneration(LlavaOnevisionPreTrainedModel, Gene
 
         if inputs_embeds is None:
             inputs_embeds = self.get_input_embeddings()(input_ids)
-
+            
+            torch.cuda.synchronize()
+            tt = time.time()    
+            print(f"text_embed_time: {tt - st}")
+            
         # Images are processed with Anyres
         if pixel_values is not None:
             image_features = self.get_image_features(
@@ -727,6 +737,10 @@ class LlavaOnevisionForConditionalGeneration(LlavaOnevisionPreTrainedModel, Gene
             image_features = image_features.to(inputs_embeds.device, inputs_embeds.dtype)
             inputs_embeds = inputs_embeds.masked_scatter(special_image_mask, image_features)
 
+            torch.cuda.synchronize()
+            it = time.time()    
+            print(f"image_embed_time: {it - tt}")
+            
         # Video are simply embedded and further pooled to decrease seq len
         if pixel_values_videos is not None:
             video_features = self.get_video_features(
